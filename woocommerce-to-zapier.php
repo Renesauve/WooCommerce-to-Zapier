@@ -9,7 +9,7 @@
 
 
 // define the after_woocommerce_pay callback 
-function send_order_to_zapier( $order_id ) { 
+function send_order_to_zapier( $order_id ) {
 
     if (function_exists("wc_get_order")) {
         $order = wc_get_order($order_id);
@@ -19,9 +19,10 @@ function send_order_to_zapier( $order_id ) {
         $firstname = $order->get_billing_first_name();
         $lastname = $order->get_billing_last_name();
         $customer_name = "$firstname $lastname";
+
+        
         $customer_email = $order->get_billing_email();
         $customer_phone_number = $order->get_billing_phone();
-
         $billing_street_address = $order->get_billing_address_1();
         $billing_city = $order->get_billing_city();
         $billing_province = $order->get_billing_state();
@@ -30,8 +31,10 @@ function send_order_to_zapier( $order_id ) {
 
         $payment_status = $order->get_status();
 
+
         $data = [
             "id" => $order_id,
+            "date" => $date_time,
             "customer" => [
                 "name" => $customer_name,
                 "email" => $customer_email,
@@ -43,6 +46,7 @@ function send_order_to_zapier( $order_id ) {
                     "country" => $billing_country,
                     "zip_code" => $billing_zip_code,
                 ],
+               
             ],
         ];
 
@@ -51,28 +55,27 @@ function send_order_to_zapier( $order_id ) {
         foreach ( $order->get_items() as $item ) {
             
             $product = $item->get_product();
-          
             $name = $item->get_name();
-            // error_log($name);
-
             $quantity = $item->get_quantity();
-      
             $type = $item->get_type();
 
-            $cart_item = " $name x$quantity";
-
+            $cart_item = "$name x$quantity";
             array_push($cart_items, $cart_item);
         }
 
         $data['cart'] = implode("\n", $cart_items);
 
-        $endpoint = "https://hooks.zapier.com/hooks/catch/8151977/okwkruh/";
-        $response = wp_remote_post( $endpoint, [
-            'headers' => [
-            'Content-Type' => 'application/json',
-            ],
-            'body' => wp_json_encode($data),
-        ]);
+        if (defined("ZAPIER_URL")) {
+            $response = wp_remote_post( ZAPIER_URL, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'body' => wp_json_encode($data),
+                ]);
+                
+        } else {
+            error_log('ZAPIER_URL not defined in wp-config.php');
+        }
 
         // error_log(json_encode($response));       
     }
